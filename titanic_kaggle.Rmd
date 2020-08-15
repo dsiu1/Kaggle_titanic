@@ -1,0 +1,98 @@
+---
+title: "titanic_kaggle"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(readxl)
+library(ggplot2)
+library(writexl)
+library(ggplot2)
+library(RColorBrewer)
+library(tidyr)
+library(stringr)
+library(readr)
+library(lme4)
+library(factoextra)
+library(FactoMineR)
+source('C:/Users/DanhaeSway/Documents/UMich/RCode/RainCloudPlots/tutorial_R/R_rainclouds.R')
+```
+
+## Checking out the titanic dataset
+
+
+```{r Load data}
+defaultdir = 'C:/Users/DanhaeSway/Documents/Python Scripts/kaggle_titanic/'
+filename = 'train.csv'
+train_data = read.csv(paste(defaultdir, filename, sep=''), sep=',')
+
+filename = 'test.csv'
+test_data = read.csv(paste(defaultdir, filename, sep=''), sep=',')
+
+filename = 'gender_submission.csv'
+example = read.csv(paste(defaultdir, filename, sep=''), sep=',')
+train_data = subset(train_data, select= -c(Name,Cabin, Ticket))
+train_data$SexF = as.factor(train_data$Sex)
+train_data$EmbarkedF = as.factor(train_data$Embarked)
+by(train_data$Survived, data=train_data, FUN=summary)
+
+##Dummy code Male and Female into 0 and 1
+train_data$Sex = as.numeric(train_data$SexF)
+##Dummy code Embarked C Q and S into -1, 0, 1
+train_data$Embarked = as.numeric(train_data$EmbarkedF)
+train_data <- train_data %>% filter(EmbarkedF!="")
+# train_data$Fare <- log10(train_data$Fare)
+
+dMelt = train_data %>% gather(dataType, data,  Pclass, Sex, Age, SibSp, Parch, Fare,  Embarked)
+# dMelt %>% group_by(dataType, Survived) %>% summarise(n=n(),
+#                                                      Perc)
+
+ggplot(dMelt, aes(x=as.factor(Survived), y=as.numeric(data), color=dataType)) + geom_bar(stat="summary",fun="mean") +geom_point()+ facet_wrap(~dataType, scale="free")
+
+ggplot(dMelt, aes(x=as.numeric(data), fill=as.factor(Survived))) + geom_histogram(position="identity", alpha=0.5) + facet_wrap(~dataType, scale="free")
+
+##So far, what looks more likely to have died? i
+##1) It looks like many more men died, 
+##2) More people from the Southampton port died,
+##3) People in the 3rd Pclass, the poorest class, are more likely to die
+##4) I think the sibling and parest/children will need to be normalized before we can tell. Or, we'll need to do a bayes analysis/percentage on it
+##5) Looks like cheaper fares will die too
+
+```
+
+
+## Next, let's take a look at a simple regression
+
+``` {r Regression}
+
+df = train_data
+df$Survived = factor(df$Survived, labels=c("Dead","Alive"))
+
+summary(glm(Survived~Age+EmbarkedF+Fare+Pclass+SexF, data=df, family=binomial))
+
+##Based on the model, Age, Pclass, and Sex are the best 
+##Let's try computing the PCA
+pcadata <- df[complete.cases(df),]
+Survived = pcadata$Survived
+pcadata = subset(pcadata,select=c( Pclass, Sex, Age, Fare))
+##For now, just remove NA
+
+res.pca <- PCA(pcadata, graph=FALSE)
+
+fviz_pca_ind(res.pca,
+             geom.ind = "point", # show points only (nbut not "text")
+             col.ind = Survived, # color by groups
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, # Concentration ellipses
+             legend.title = "Groups"
+             )
+
+
+ggplot(pcadata, aes(x=Age, y=Fare, color=Survived)) + geom_point()
+ggplot(pcadata, aes(x=Sex, y=Fare, color=Survived)) + geom_point()
+
+
+
+```
