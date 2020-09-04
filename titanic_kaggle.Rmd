@@ -91,7 +91,7 @@ fviz_pca_ind(res.pca,
 
 
 ggplot(pcadata, aes(x=Age, y=Fare, color=Survived)) + geom_point()
-ggplot(pcadata, aes(x=Sex, y=Fare, color=Survived)) + geom_point()
+ggplot(pcadata, aes(x=Sex, y=Fare, fill=Survived)) + geom_bar(stat="summary", fun="mean")
 
 
 
